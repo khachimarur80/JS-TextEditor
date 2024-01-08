@@ -1,6 +1,7 @@
 <template>
   <div id="container">
-    <div class="text" @keydown="textKeydown" @mousedown="textMouseDown" contenteditable>
+    <div style="user-select: none">{{ activeLine || "null" }}</div>
+    <div class="text" @keydown="textKeydown" @mousedown="textMouseDown" @mouseup="textMouseUp" contenteditable>
       <div 
         :class="['line', activeLine==i ? 'active' : '']" 
         v-for="(line, i) in text.lines" 
@@ -62,8 +63,6 @@
         else if (event.key == 'ArrowDown') {
           this.activeLine = Math.min(this.activeLine+1, this.text.lines.length-1)
         }
-
-
         else if (event.key == 'Enter') {
           event.preventDefault()
           let newLine = new Line
@@ -75,16 +74,48 @@
         }
       },
       textMouseDown(event) {
-        this.activeLine = parseInt(event.target.getAttribute('data-index'))
+        if (this.text.lines.length == 0) {
+          let newLine = new Line
+          this.text.lines.push(newLine)
+
+          this.activeLine = 0
+        }
+        else if (event.target.classList.contains('line-contents')) {
+          //Only focus when clicking on a line.
+          console.log(event.target)
+          let lineIndex = parseInt(event.target.getAttribute('data-index'))
+
+          if (typeof lineIndex == "number") {
+            this.activeLine = lineIndex
+          }
+          else {
+            this.activeLine = null
+          }
+        }
+        else {
+          //Make the activeLine the last line, when the clicking outside of a line 
+          // and nothing else is focused.
+          if (typeof this.activeLine != "number") {
+            this.activeLine = this.text.lines.length - 1
+          }
+          else {
+          //If something is focused blur the activeLine
+            event.preventDefault()
+            this.activeLine = null
+          }
+        }
+      },
+      textMouseUp() {
+        console.log(document.activeElement)
+        if (typeof this.activeLine != "number") {
+          document.querySelector('.text').blur()
+          window.getSelection().removeAllRanges()
+        }
       }
     },
 
     mounted() {
       this.text = new File
-
-      let line = new Line
-
-      this.text.lines.push(line)
     },
   }
 </script>
@@ -100,6 +131,9 @@
     width: 100%;
     display: flex;
     flex-direction: column;
+    border: 1px solid red;
+  }
+  .text:read-write:focus {
     outline: none;
   }
   .line {
@@ -111,7 +145,7 @@
   .line-contents {
     flex: 1;
     outline: none;
-    background: #ddd;
+    background: #efefef;
     font-size: 14px;
     min-height: 22px;
   }
